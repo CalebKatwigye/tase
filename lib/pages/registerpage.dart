@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tase/components/button.dart';
@@ -15,9 +16,19 @@ class RegisterPage extends StatelessWidget {
   //sign up method
   void signUserUp () async{
     if (passwordController.text == confirmPasswordController.text){
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
       email: emailController.text, 
       password: passwordController.text);
+
+      //after creating the user, create a new document in cloud firestore called users
+      FirebaseFirestore.instance
+      .collection("Users")
+      .doc(userCredential.user!.email)
+      .set({
+        'username' : emailController.text.split('@')[0],
+        'phonenumber': 'Empty phonenumber..',
+        'address': 'Empty address..'
+      });
     } else {
       print('error');
     }
