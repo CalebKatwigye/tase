@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:tase/pages/settingspage.dart';
+import 'package:tase/pages/homepage.dart';
+//import 'package:tase/pages/settingspage.dart';
 
 class CalculatorPage extends StatefulWidget {
   CalculatorPage({super.key});
@@ -106,7 +107,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               TextButton(
                 onPressed: () {
                   Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => SettingsPage()));
+                      MaterialPageRoute(builder: (context) => HomePage()));
                 },
                 child: Text('View'),
               ),
@@ -375,7 +376,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       ),
                     ),
                     SizedBox(
-                      height: 80,
+                      height: 100,
                     ),
                   ],
                 )

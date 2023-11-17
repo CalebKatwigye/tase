@@ -57,7 +57,7 @@ class RegisterPage extends StatelessWidget {
       
                 //welcome back
                 Text(
-                  'Welcome back you\'ve been missed',
+                  'Welcome!',
                   style: TextStyle(
                     color: Color.fromARGB(255, 97, 86, 86),
                     fontSize: 16,

@@ -1,6 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
+final Uri _url = Uri.parse('https://flutter.dev');
+void _launchUrl(String url) async {
+
+ 
+    await launchUrl(Uri.parse(url));
+  
+}
+
+  Future<void> _launchUrls() async {
+       final Uri _url = Uri.parse('https://www.pdfdrive.com/artificial-intelligence-e11895991.html');
+  if (!await launchUrl(_url)) {
+    throw 'Could not launch $_url';
+  }}
 
 class LoanPost extends StatefulWidget {
   final double totalInterest;
@@ -29,6 +49,74 @@ class LoanPost extends StatefulWidget {
 class _LoanPostState extends State<LoanPost> {
   final user = FirebaseAuth.instance.currentUser!;
 
+  //mobile money function
+
+ Future<void> handlePaymentInitialization() async {
+ 
+    try {
+      final Map<String, String> headers = {
+        'Authorization':
+            'Bearer FLWSECK-69fda727ee7df02bab6a24cdcd7e3ffd-18b5c7c3f10vt-X',
+        "Content-Type": "application/json",
+      };
+DateTime now = DateTime.now();
+String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+final user = FirebaseAuth.instance.currentUser!;
+      final Map<String, dynamic> body = {
+        'tx_ref': '${formattedDate}',
+        'amount': '${widget.ttAmount}',
+        'currency': 'UGX',
+        'redirect_url':
+            'https://webhook.site/9d0b00ba-9a69-44fa-a43d-a82c33c36fdc',
+        'meta': {
+          'consumer_id': user.email,
+          'consumer_mac': '92a3-912ba-1192a',
+        },
+        'customer': {
+          'email': '${user.email}',
+          'phonenumber': '${user.phoneNumber}',
+          'name': '${user.displayName}',
+        },
+        'customizations': {
+          'title': 'Tase',
+          
+        },
+      };
+
+      final response = await http.post(
+        Uri.parse('https://api.flutterwave.com/v3/payments'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (responseData['status'] == 'success') {
+        String link = responseData['data']['link'];
+
+        Uri url = Uri.parse(link);
+       FirebaseFirestore.instance.collection("Transcations").doc('${formattedDate}').set({
+      'Email': user.email,
+      'txref': formattedDate,
+      'TotalInterest': widget.totalInterest,
+      'NetInterest': widget.netInterest,
+      'Selected': widget.selected,
+      'MonthlyInstallment': widget.monthlyInstallment,
+      'Collateral': widget.collateral,
+      'TotalAmount': widget.ttAmount,
+      'TimeStamp': Timestamp.now(),
+      'verified':false
+    });
+        _launchUrl(link);
+     
+      } else {
+        print('Payment failed: ${responseData['message']}');
+      }
+    } catch (err) {
+      print('Error making Flutterwave payment: ${err}');
+    }
+  }
+
   void deletePost() {
     //show confirmation dialog for deletion
     showDialog(
@@ -47,6 +135,7 @@ class _LoanPostState extends State<LoanPost> {
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
+                    ;
                   },
                   child: const Text('Cancel'),
                 ),
@@ -91,7 +180,8 @@ class _LoanPostState extends State<LoanPost> {
               ),
               TextButton(
                   onPressed: () {
-                    Navigator.pop(context);
+                   // _launchUrl('https://flutter.dev');
+                   handlePaymentInitialization();
                   },
                   child: Text('Accept')),
             ],
@@ -160,7 +250,7 @@ class _LoanPostState extends State<LoanPost> {
               ),
 
               //delete button
-              if (user != user.email)
+              if (widget.user == user.email)
                 IconButton(
                     icon: Icon(
                       Icons.delete,
@@ -169,7 +259,7 @@ class _LoanPostState extends State<LoanPost> {
                     onPressed: deletePost),
 
               //accept button
-              if (user == user.email)
+              if (widget.user != user.email)
                 IconButton(
                     icon: Icon(
                       Icons.check_circle,
