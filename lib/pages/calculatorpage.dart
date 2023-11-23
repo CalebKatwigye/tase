@@ -3,6 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:tase/pages/homepage.dart';
+import 'package:intl/intl.dart';
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+
 //import 'package:tase/pages/settingspage.dart';
 
 class CalculatorPage extends StatefulWidget {
@@ -18,14 +21,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
   TextEditingController _controller3 = new TextEditingController();
   final user = FirebaseAuth.instance.currentUser!;
 
-
   String selected = '';
   double totalInterest = 0;
+  int principal = 0;
   double monthlyInterest = 0;
   double monthlyInstallment = 0;
   double ttAmount = 0;
   String collateral = '';
   double netInterest = 0;
+  double paymentAmount = 0;
 
   void loancalculation() {
     final amount = int.parse(_controller1.text);
@@ -34,8 +38,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     //final minterest = tinterest / (int.parse(selected * 12));
     final security = _controller2.text;
+
     final totalAmount = tinterest + amount;
     final ntInterest = tinterest - (tinterest * 0.3);
+    final pAmount = amount + ntInterest;
     final minstall = (amount + tinterest) / (int.parse(selected));
     setState(() {
       totalInterest = tinterest;
@@ -44,6 +50,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
       ttAmount = totalAmount;
       collateral = security;
       netInterest = ntInterest;
+      paymentAmount = pAmount;
+      principal = amount;
       selected = selected;
     });
   }
@@ -76,15 +84,25 @@ class _CalculatorPageState extends State<CalculatorPage> {
     //post only if something is in the text field
 
     //store in firebase
-    FirebaseFirestore.instance.collection("User Loan Posts").add({
+    DateTime now = DateTime.now();
+    String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+    FirebaseFirestore.instance
+        .collection("User Loan Posts")
+        .doc('${formattedDate}')
+        .set({
       'UserEmail': user.email,
+      'post-id': formattedDate,
       'TotalInterest': totalInterest,
       'NetInterest': netInterest,
       'Selected': selected,
       'MonthlyInstallment': monthlyInstallment,
       'Collateral': collateral,
       'TotalAmount': ttAmount,
-      'TimeStamp': Timestamp.now()
+      'PaymentAmount': paymentAmount,
+      'Principal': principal,
+      'TimeStamp': Timestamp.now(),
+      'taken': false,
+      'sent': false
     });
 
     showDialog(
@@ -111,7 +129,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 },
                 child: Text('View'),
               ),
-              
             ],
           );
         });
@@ -276,86 +293,132 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       onTap: () {
                         //call for calculation function
                         loancalculation();
+                        if (int.parse(_controller1.text) < 100) {
+                          final snackBar = SnackBar(
+                            /// need to set following properties for best effect of awesome_snackbar_content
+                            elevation: 0,
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.transparent,
+                            content: AwesomeSnackbarContent(
+                              title: 'On Snap!',
+                              color: Colors.grey,
 
-                        //delay time for calculation
-                        Future.delayed(Duration.zero);
-                        showModalBottomSheet(
-                            isScrollControlled: true,
-                            enableDrag: true,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30)),
-                            context: context,
-                            builder: (context) {
-                              return Container(
-                                height: 700,
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(20, 30, 0, 0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 20),
-                                        child: Text(
-                                          "Loan Details",
-                                          style: TextStyle(
-                                              fontSize: 25,
-                                              fontWeight: FontWeight.bold),
+                              message:
+                                  'Please enter an amount more than 20,000 ',
+
+                              /// change contentType to ContentType.success, ContentType.warning or ContentType.help for variants
+                              contentType: ContentType.failure,
+                            ),
+                          );
+
+                          ScaffoldMessenger.of(context)
+                            ..hideCurrentSnackBar()
+                            ..showSnackBar(snackBar);
+                        } else if (int.parse(_controller3.text) < 1) {
+                          final snackBar = SnackBar(
+                            /// need to set following properties for best effect of awesome_snackbar_content
+                            elevation: 0,
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.transparent,
+                            content: AwesomeSnackbarContent(
+                              title: 'On Snap!',
+                              color: Colors.grey,
+
+                              message:
+                                  'Please enter an interest more than 10% ',
+
+                              /// change contentType to ContentType.success, ContentType.warning or ContentType.help for variants
+                              contentType: ContentType.failure,
+                            ),
+                          );
+
+                          ScaffoldMessenger.of(context)
+                            ..hideCurrentSnackBar()
+                            ..showSnackBar(snackBar);
+                        } else {
+                          //delay time for calculation
+                          Future.delayed(Duration.zero);
+                          showModalBottomSheet(
+                              isScrollControlled: true,
+                              enableDrag: true,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30)),
+                              context: context,
+                              builder: (context) {
+                                return Container(
+                                  height: 700,
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(20, 30, 0, 0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(left: 20),
+                                          child: Text(
+                                            "Loan Details",
+                                            style: TextStyle(
+                                                fontSize: 25,
+                                                fontWeight: FontWeight.bold),
+                                          ),
                                         ),
-                                      ),
-                                      SizedBox(
-                                        height: 15,
-                                      ),
-                                      result(
-                                          title: "Total Interest",
-                                          amount: totalInterest),
-                                      result(
-                                          title: "Net Interest",
-                                          amount: netInterest),
-                                      resultMonth(
-                                          title: "Payment Period",
-                                          value: selected),
-                                      result(
-                                          title: "Monthly Installment",
-                                          amount: monthlyInstallment),
-                                      resultText(
-                                          title: "Collateral",
-                                          value: collateral),
-                                      result(
-                                          title: "Total payment",
-                                          amount: ttAmount),
-                                      SizedBox(
-                                        height: 20,
-                                      ),
-                                      GestureDetector(
-                                        onTap: postLoanRequest,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(25),
-                                          margin: const EdgeInsets.symmetric(
-                                              horizontal: 25),
-                                          decoration: BoxDecoration(
-                                              color: Colors.black,
-                                              borderRadius:
-                                                  BorderRadius.circular(30)),
-                                          child: Center(
-                                            child: Text(
-                                              "Post Loan",
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
+                                        SizedBox(
+                                          height: 15,
+                                        ),
+                                        resultInt(
+                                            title: "Principal",
+                                            amount: principal),
+                                        result(
+                                            title: "Total Interest",
+                                            amount: totalInterest),
+                                        result(
+                                            title: "Net Interest",
+                                            amount: netInterest),
+                                        resultMonth(
+                                            title: "Payment Period",
+                                            value: selected),
+                                        result(
+                                            title: "Monthly Installment",
+                                            amount: monthlyInstallment),
+                                        resultText(
+                                            title: "Collateral",
+                                            value: collateral),
+                                        result(
+                                            title: "Total payment",
+                                            amount: ttAmount),
+                                        SizedBox(
+                                          height: 20,
+                                        ),
+                                        GestureDetector(
+                                          onTap: postLoanRequest,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(25),
+                                            margin: const EdgeInsets.symmetric(
+                                                horizontal: 25),
+                                            decoration: BoxDecoration(
+                                                color: Colors.black,
+                                                borderRadius:
+                                                    BorderRadius.circular(30)),
+                                            child: Center(
+                                              child: Text(
+                                                "Post Loan",
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              );
-                            });
+                                );
+                              });
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.all(25),
@@ -384,6 +447,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
             ),
           ),
         ));
+  }
+
+  Widget resultInt({required String title, required int amount}) {
+    return ListTile(
+      title: Text(
+        title,
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      ),
+      trailing: Padding(
+        padding: const EdgeInsets.only(right: 20),
+        child: Text(
+          'UGX ' + amount.toStringAsFixed(2),
+          style: TextStyle(fontSize: 19),
+        ),
+      ),
+    );
   }
 
   Widget result({required String title, required double amount}) {

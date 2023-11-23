@@ -1,17 +1,17 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 
-final Uri _url = Uri.parse('https://flutter.dev');
+
 void _launchUrl(String url) async {
   await launchUrl(Uri.parse(url));
 }
-
-class LoanPost extends StatefulWidget {
+class TrackMyLoanCard extends StatefulWidget {
   final double totalInterest;
   final String user;
   final double netInterest;
@@ -22,29 +22,34 @@ class LoanPost extends StatefulWidget {
   final double paymentAmount;
   final int principal;
   final String postId;
-  const LoanPost(
+  final DateTime now;
+  final DateTime fourMonthsLater;
+
+  TrackMyLoanCard(
       {super.key,
       required this.totalInterest,
       required this.netInterest,
       required this.selected,
       required this.monthlyInstallment,
       required this.collateral,
-      required this.ttAmount,
-      required this.postId,
-      required this.user,
       required this.paymentAmount,
-      required this.principal});
+      required this.principal,
+      required this.user,
+      required this.postId,
+      required this.ttAmount,
+      required this.now,
+      required this.fourMonthsLater});
 
   @override
-  State<LoanPost> createState() => _LoanPostState();
+  State<TrackMyLoanCard> createState() => _TrackMyLoanCardState();
 }
 
-class _LoanPostState extends State<LoanPost> {
+class _TrackMyLoanCardState extends State<TrackMyLoanCard> {
   final user = FirebaseAuth.instance.currentUser!;
 
-  //mobile money function
-
-  Future<void> handlePaymentInitialization() async {
+  TextEditingController enteredAmount = new TextEditingController();
+ Future<void> handlePaymentInitialization() async {
+  final money = int.parse(enteredAmount.text);
     try {
       final Map<String, String> headers = {
         'Authorization':
@@ -56,7 +61,7 @@ class _LoanPostState extends State<LoanPost> {
       final user = FirebaseAuth.instance.currentUser!;
       final Map<String, dynamic> body = {
         'tx_ref': '${formattedDate}',
-        'amount': '${widget.principal}',
+        'amount': '${money}',
         'currency': 'UGX',
         'redirect_url':
             'https://webhook.site/9d0b00ba-9a69-44fa-a43d-a82c33c36fdc',
@@ -87,22 +92,15 @@ class _LoanPostState extends State<LoanPost> {
 
         Uri url = Uri.parse(link);
         FirebaseFirestore.instance
-            .collection("Transactions")
+            .collection("Loan Repayment Transactions")
             .doc('${formattedDate}')
             .set({
           'Email': user.email,
           'txref': formattedDate,
-          'TotalInterest': widget.totalInterest,
-          'NetInterest': widget.netInterest,
-          'Selected': widget.selected,
-          'MonthlyInstallment': widget.monthlyInstallment,
-          'Collateral': widget.collateral,
-          'TotalAmount': widget.ttAmount,
-          'PaymentAmount': widget.paymentAmount,
-          'Principal': widget.principal,
+         'money_paid': money,
           'TimeStamp': Timestamp.now(),
           'post-id':widget.postId,
-          'verified': false
+          
         });
         _launchUrl(link);
       } else {
@@ -113,60 +111,24 @@ class _LoanPostState extends State<LoanPost> {
     }
   }
 
-  void deletePost() {
-    //show confirmation dialog for deletion
-    showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-              backgroundColor: Colors.grey[900],
-              title: const Text(
-                'Delete Loan Request',
-                style: TextStyle(color: Colors.white),
-              ),
-              content: const Text(
-                  'Are you sure you want to delete this loan request?',
-                  style: TextStyle(color: Colors.white)),
-              actions: [
-                //cancel button
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ;
-                  },
-                  child: const Text('Cancel'),
-                ),
 
-                //delete button
-                TextButton(
-                  onPressed: () async {
-                    await FirebaseFirestore.instance
-                        .collection("User Loan Posts")
-                        .doc(widget.postId)
-                        .delete()
-                        .then((value) => print("post deleted"))
-                        .catchError(
-                            (error) => print("failed to delete post: $error"));
-
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Delete'),
-                )
-              ],
-            ));
-  }
-
-  //dialog for accepting loan
-  void acceptLoan() {
+  void payInstallment() {
     showDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
             backgroundColor: Colors.grey[900],
-            title: Text('Accept Loan Request',
+            title: Text('Pay Installment',
                 style: TextStyle(color: Colors.white)),
-            content: Text(
-                'Are you sure you want to accept this loan request? If you do, you will be sent a mobile money pin prompt.',
-                style: TextStyle(color: Colors.white)),
+            content: TextField(
+              autofocus: true,
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                    hintText: "Enter amount to pay",
+                    hintStyle: TextStyle(color: Colors.grey)),
+                controller: enteredAmount,
+            ),
+               
             actions: [
               TextButton(
                 onPressed: () {
@@ -176,10 +138,10 @@ class _LoanPostState extends State<LoanPost> {
               ),
               TextButton(
                   onPressed: () {
-                    // _launchUrl('https://flutter.dev');
+                  
                     handlePaymentInitialization();
                   },
-                  child: Text('Accept')),
+                  child: Text('Submit')),
             ],
           );
         });
@@ -223,8 +185,8 @@ class _LoanPostState extends State<LoanPost> {
                     height: 10,
                   ),
                   Text(
-                    'Net Interest: UGX ' +
-                        widget.netInterest.toStringAsFixed(2),
+                    'Total Interest: UGX ' +
+                        widget.totalInterest.toStringAsFixed(2),
                     style: TextStyle(color: Colors.grey[700]),
                   ),
                   const SizedBox(
@@ -236,6 +198,22 @@ class _LoanPostState extends State<LoanPost> {
                     height: 10,
                   ),
                   Text(
+                    'Start Date: ' +
+                        DateFormat('yyyy-MM-dd').format(widget.now),
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  Text(
+                    'End Date: ' +
+                        DateFormat('yyyy-MM-dd').format(widget.fourMonthsLater),
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  Text(
                     'Collateral: ' + widget.collateral.toUpperCase(),
                     style: TextStyle(color: Colors.grey[700]),
                   ),
@@ -243,8 +221,16 @@ class _LoanPostState extends State<LoanPost> {
                     height: 10,
                   ),
                   Text(
-                    'Net Payment: UGX ' +
-                        widget.paymentAmount.toStringAsFixed(2),
+                    'Installment: UGX ' +
+                        widget.monthlyInstallment.toStringAsFixed(2),
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  Text(
+                    'Balance: UGX ' +
+                        widget.ttAmount.toStringAsFixed(2),
                     style: TextStyle(color: Colors.grey[700]),
                   ),
                   const SizedBox(
@@ -254,22 +240,24 @@ class _LoanPostState extends State<LoanPost> {
               ),
 
               //delete button
+              /*
               if (widget.user == user.email)
                 IconButton(
                     icon: Icon(
                       Icons.delete,
                       color: Colors.red,
                     ),
-                    onPressed: deletePost),
+                    onPressed: (){}),
+               */
 
               //accept button
-              if (widget.user != user.email)
-                IconButton(
-                    icon: Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                    ),
-                    onPressed: acceptLoan),
+              //if (widget.user != user.email)
+              IconButton(
+                  icon: Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                  ),
+                  onPressed: payInstallment),
             ],
           ),
         ],

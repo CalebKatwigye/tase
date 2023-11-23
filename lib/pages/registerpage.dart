@@ -27,7 +27,8 @@ class RegisterPage extends StatelessWidget {
       .set({
         'username' : emailController.text.split('@')[0],
         'phonenumber': 'Empty phonenumber..',
-        'address': 'Empty address..'
+        'address': 'Empty address..',
+        'admin': false
       });
     } else {
       print('error');

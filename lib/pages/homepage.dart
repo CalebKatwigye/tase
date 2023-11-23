@@ -2,82 +2,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tase/components/loanpost.dart';
+import 'package:tase/pages/adminpage.dart';
 //import 'package:tase/components/post.dart';
 //import 'package:tase/components/textfield.dart';
 import 'package:tase/pages/calculatorpage.dart';
 import 'package:tase/pages/profilepage.dart';
-import 'package:tase/pages/settingspage.dart';
+import 'package:http/http.dart' as http;
+import 'package:tase/pages/termsandconditions.dart';
+import 'dart:convert';
 
-
-//hooli-tx-1920bbdsdssdsdsYTYTTtytty
-//FLWSECK-69fda727ee7df02bab6a24cdcd7e3ffd-18b5c7c3f10vt-X
-
-/*
-handlePaymentInitialization() async { 
-	 
-Map<String, String> headers = {
-  'Authorization': 'Bearer FLWSECK-69fda727ee7df02bab6a24cdcd7e3ffd-18b5c7c3f10vt-X',
-  'Content-type': 'application/json',
-         'Accept': 'application/json'
-};
-
-Map<String, dynamic> body = {
-  "tx_ref": "hooli-tx-1920bbdsdssdsdsYTYTTtytty", // Unique transaction reference
-  'amount': '100',
-  'currency': 'NGN',
-  'redirect_url': 'https://your-redirect-url', // URL to redirect user after payment
-  'meta': {
-    'consumer_id': 23,
-    'consumer_mac': '92a3-912ba-1192a',
-  },
-  'customer': {
-    'email': 'user@gmail.com',
-    'phonenumber': '256703882021',
-    'name': 'Yemi Desola',
-  },
-  'customizations': {
-    'title': 'Pied Piper Payments',
-    'logo': 'http://www.piedpiper.com/app/themes/joystick-v27/images/logo.png',
-  },
-};
-
-
-final response = await http.post(
-  Uri.parse('https://api.flutterwave.com/v3/payments',),
-  headers: headers,
-  body: jsonEncode(body),
-);
-print('Response status code: ${response.statusCode}');
-print('Response body: ${response.body}');
-final responseData = jsonDecode(response.body);
-final data = responseData['data'];
-final link = data['link'];
-final urlString = link;
-final Uri url = Uri.parse(urlString);
-print(url);
-launchUrl(url);
-  
- }
-
-PaymentInitialization() async { 
-	 final Customer customer = Customer(
-	 name: "Flutterwave Developer",
-	 phoneNumber: "1234566677777",   
-     email: "customer@customer.com"  
- );            
-    final Flutterwave flutterwave = Flutterwave(
-        context: context, publicKey: "FLWPUBK-ab5d0c0188cb40123a5568cf8b56c666-X",
-		currency: "UGX",   
-        redirectUrl: "https://pub.dev/packages/flutter_inappwebview",  
-        txRef: "add-your-unique-reference-here",   
-        amount: "3000",   
-        customer: customer,   
-        paymentOptions: "ussd, card, barter, payattitude",   
-        customization: Customization(title: "My Payment"),
-        isTestMode: false );
-        final ChargeResponse response = await flutterwave.charge();
- }
- */
+import 'package:tase/pages/trackmyloans.dart';
+//import 'package:tase/pages/settingspage.dart';
 
 class HomePage extends StatefulWidget {
   HomePage({super.key});
@@ -115,10 +50,64 @@ class _HomePageState extends State<HomePage> {
   }
    */
 
-  
-
   @override
   Widget build(BuildContext context) {
+ 
+
+ Future admintile() async {
+   final collectionReference =
+          FirebaseFirestore.instance.collection('Users');
+      final querySnapshot = await collectionReference.doc(user.email).get();
+      if (querySnapshot['admin'] == true){
+        return true;
+      }else{
+        return false;
+      }
+
+ }
+     
+    Future _verifyPayments() async {
+      final collectionReference =
+          FirebaseFirestore.instance.collection('Transactions');
+      final querySnapshot = await collectionReference.get();
+
+      for (final doc in querySnapshot.docs) {
+        final txRef = doc['txref'];
+        final docid = doc['post-id'];
+        try {
+          final Map<String, String> headers = {
+            'Authorization':
+                'Bearer FLWSECK-69fda727ee7df02bab6a24cdcd7e3ffd-18b5c7c3f10vt-X',
+            "Content-Type": "application/json",
+          };
+          final response = await http.get(
+            Uri.parse(
+                'https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${txRef}'),
+            headers: headers,
+          );
+          final responseData = jsonDecode(response.body);
+          if (responseData['status'] == 'success') {
+            final transactions = responseData['data'];
+            // final verifiedPayments = transactions.map((transaction) => transaction['tx_ref']).toList();
+
+            bool verify = true;
+            FirebaseFirestore.instance
+                .collection('User Loan Posts')
+                .doc('${docid}')
+                .update({
+              'taken': true,
+            });
+          } else {
+            print(
+                'Failed to fetch verified payments: ${responseData['message']}');
+          }
+        } catch (err) {
+          print('Error making Flutterwave payment: ${err}');
+        }
+      }
+    }
+
+    _verifyPayments();
     return Scaffold(
       backgroundColor: Colors.grey[350],
       appBar: AppBar(
@@ -139,57 +128,93 @@ class _HomePageState extends State<HomePage> {
       drawer: Drawer(
         backgroundColor: Colors.black,
         child: Container(
-          child: ListView(
-            children: [
-              DrawerHeader(
-                  child: Center(
-                child: Text("logo",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 35,
-                        fontWeight: FontWeight.bold)),
-              )),
-              ListTile(
-                leading: Icon(Icons.home, color: Colors.white),
-                title: Text("Home",
-                    selectionColor: Colors.amber,
-                    style: TextStyle(fontSize: 20, color: Colors.white)),
-                onTap: () {
-                 
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.calculate, color: Colors.white),
-                title: Text("Calculator",
-                    style: TextStyle(fontSize: 20, color: Colors.white)),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => CalculatorPage()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.book, color: Colors.white),
-                title: Text("Terms and conditions",
-                    style: TextStyle(fontSize: 20, color: Colors.white)),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SettingsPage()),
-                  );
-                },
-              ),
-              SizedBox(
-                height: 400,
-              ),
-              ListTile(
-                leading: Icon(Icons.logout, color: Colors.white),
-                title: Text("Logout",
-                    style: TextStyle(fontSize: 20, color: Colors.white)),
-                onTap: signUserOut,
-              ),
-            ],
+          child: FutureBuilder(
+            future: admintile(),
+            builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+          return Center(child: CircularProgressIndicator());
+        }
+              final isAdmin = snapshot.data!;
+              return ListView(
+                children: [
+                  DrawerHeader(
+                      child: Center(
+                          child: Container(
+                              width: 80, // Set the desired width
+                              height: 80, // Set the desired height
+                              child: ClipOval(
+                                child: Image(
+                                  image: AssetImage("assets/images/logo3.jpg"),
+                                  fit: BoxFit
+                                      .cover, // You can use BoxFit.contain or other options based on your preference
+                                ),
+                              )))),
+                  ListTile(
+                    leading: Icon(Icons.home, color: Colors.white),
+                    title: Text("Home",
+                        selectionColor: Colors.amber,
+                        style: TextStyle(fontSize: 20, color: Colors.white)),
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.calculate, color: Colors.white),
+                    title: Text("Calculator",
+                        style: TextStyle(fontSize: 20, color: Colors.white)),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => CalculatorPage()),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.book, color: Colors.white),
+                    title: Text("Terms and conditions",
+                        style: TextStyle(fontSize: 20, color: Colors.white)),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => TermsAndConditions()),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.money, color: Colors.white),
+                    title: Text("Track My Loans",
+                        style: TextStyle(fontSize: 20, color: Colors.white)),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => TrackMyLoans()),
+                      );
+                    },
+                  ),
+                    if (isAdmin) 
+                  ListTile(
+                    leading: Icon(Icons.admin_panel_settings, color: Colors.white),
+                    title: Text("Admin",
+                        style: TextStyle(fontSize: 20, color: Colors.white)),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => AdminPage()),
+                      );
+                    },
+                  ),
+                  SizedBox(
+                    height: 400,
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.logout, color: Colors.white),
+                    title: Text("Logout",
+                        style: TextStyle(fontSize: 20, color: Colors.white)),
+                    onTap: signUserOut,
+                  ),
+                ],
+              );
+            }
           ),
         ),
       ),
@@ -201,10 +226,7 @@ class _HomePageState extends State<HomePage> {
               child: StreamBuilder(
                   stream: FirebaseFirestore.instance
                       .collection("User Loan Posts")
-                      .orderBy(
-                        "TimeStamp",
-                        descending: false,
-                      )
+                      .where('taken', isEqualTo: false)
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
@@ -213,16 +235,23 @@ class _HomePageState extends State<HomePage> {
                           itemBuilder: (context, index) {
                             //get the message
                             final post = snapshot.data!.docs[index];
-                            return LoanPost(
-                              postId: post.id,
-                              totalInterest: post['TotalInterest'],
-                              netInterest: post['NetInterest'],
-                              selected: post['Selected'],
-                              monthlyInstallment: post['MonthlyInstallment'],
-                              collateral: post['Collateral'],
-                              ttAmount: post['TotalAmount'],
-                              user: post['UserEmail'],
-                            );
+                            return StreamBuilder<Object>(
+                                stream: null,
+                                builder: (context, snapshot) {
+                                  return LoanPost(
+                                    postId: post['post-id'],
+                                    totalInterest: post['TotalInterest'],
+                                    netInterest: post['NetInterest'],
+                                    selected: post['Selected'],
+                                    monthlyInstallment:
+                                        post['MonthlyInstallment'],
+                                    collateral: post['Collateral'],
+                                    ttAmount: post['TotalAmount'],
+                                    user: post['UserEmail'],
+                                    paymentAmount: post['PaymentAmount'],
+                                    principal: post['Principal'],
+                                  );
+                                });
                           });
                     } else if (snapshot.hasError) {
                       return Center(
@@ -307,17 +336,15 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.black,
-        child: Icon(Icons.add),
-        onPressed: (){
-           Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => CalculatorPage()));
-        }),
+          backgroundColor: Colors.black,
+          child: Icon(Icons.add),
+          onPressed: () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => CalculatorPage()));
+          }),
     );
   }
   // Function to launch the website URL
-  
 }
 /*child: Center(
             child: Text(

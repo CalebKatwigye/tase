@@ -51,6 +51,8 @@ class _SettingsPageState extends State<SettingsPage> {
                             collateral: post['Collateral'],
                             ttAmount: post['TotalAmount'],
                             user: post['UserEmail'],
+                            paymentAmount: post['PaymentAmount'],
+                            principal: post['Principal'],
                           );
                         });
                   } else if (snapshot.hasError) {
